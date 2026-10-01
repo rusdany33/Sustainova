@@ -5,6 +5,10 @@ const clients = require('./../controllers/client/clientControllers');
 const multer = require('multer');
 const path = require('path');
 const { verifyToken } = require('../middlewares/authorization');
+const { rateLimit } = require('express-rate-limit');
+const passwordReset = require('../controllers/passwordResetController');
+const resetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false,
+  message: { message: 'Terlalu banyak percobaan. Silakan coba lagi dalam 15 menit.' } });
 
 const upload = multer({
   dest: path.resolve(__dirname, '../../uploads'),
@@ -21,6 +25,8 @@ const upload = multer({
 
 router.post('/register', authControllers.registerUser);
 router.post('/login', authControllers.loginUser);
+router.post('/forgot-password', resetLimiter, passwordReset.requestReset);
+router.post('/reset-password', resetLimiter, passwordReset.resetPassword);
 
 router.get('/home', clients.getHome)
 router.get('/about', clients.getAbout)

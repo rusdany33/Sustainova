@@ -24,3 +24,15 @@ npm run test:integration
 Tes integrasi membutuhkan backend aktif dan akun bawaan di atas. Tes membuat data sementara dengan nama unik lalu membersihkannya.
 
 Verifikasi frontend dari folder `frontend`: `npm run build`.
+
+## Lupa password
+
+Jalankan `npm run migrate:password-reset` dari folder `backend-js` untuk database lama. Import SQL utama yang baru sudah mencakup tabel reset dan versi sesi.
+
+Untuk Laragon, aktifkan Mailpit (SMTP `127.0.0.1:1025`, kotak masuk http://localhost:8025). Salin `frontend/.env.example` menjadi `frontend/.env.local` untuk menampilkan petunjuk kotak email lokal. Buka halaman lupa password, masukkan email akun, buka email di Mailpit, lalu gunakan tautannya untuk menyimpan password baru. Email lokal tidak diteruskan ke Gmail/Outlook.
+
+Tautan berlaku 30 menit, sekali pakai. Password baru minimal 8 karakter; setelah reset semua sesi lama akun berakhir. Pengiriman ulang dibatasi 60 detik per akun dan endpoint reset dibatasi 20 percobaan per IP dalam 15 menit.
+
+Untuk pengiriman ke email publik, isi `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, dan `MAIL_FROM` dengan konfigurasi penyedia email. Isi `FRONTEND_URL` dengan alamat website HTTPS. Jangan commit `.env`. Konfigurasi transport mengacu pada [dokumentasi Nodemailer](https://nodemailer.com/smtp), dan alur token mengikuti [panduan OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
+
+Tes lengkap reset melalui Mailpit: `npm run test:password-reset` dari folder backend. Tes menggunakan akun sementara dan menghapus akun serta email tes sesudah selesai.

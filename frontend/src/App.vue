@@ -24,7 +24,7 @@ const isUnregisteredRoute = computed(() => {
 
 // Cek halaman auth
 const isAuthPage = computed(() => {
-  const authRoutes = ["/login", "/register", "/forgot-password"];
+  const authRoutes = ["/login", "/register", "/forgot-password", "/forgotPass", "/reset-password"];
   return authRoutes.includes(route.path);
 });
 

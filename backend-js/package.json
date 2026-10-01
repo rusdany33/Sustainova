@@ -9,7 +9,9 @@
     "test-db": "node tests/check-db.js",
     "test:integration": "node tests/integration.js",
     "test-auth": "node tests/tes-hash.js",
-    "test-up": "node tests/tes-upload.js"
+    "test-up": "node tests/tes-upload.js",
+    "migrate:password-reset": "node scripts/migrate-password-reset.js",
+    "test:password-reset": "node tests/password-reset.js"
   },
   "keywords": [],
   "author": "",
@@ -21,9 +23,11 @@
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.0",
-    "mysql2": "^3.14.1"
+    "mysql2": "^3.14.1",
+    "nodemailer": "^10.0.13"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

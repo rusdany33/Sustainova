@@ -10,13 +10,14 @@
         <div class="success-icon">
           <i class="bi bi-check-circle-fill"></i>
         </div>
-        <h2>Email Terkirim!</h2>
-        <p>Link reset password telah dikirim ke <strong>{{ email }}</strong>. Silakan periksa kotak masuk Anda.</p>
+        <h2>Periksa Kotak Masuk</h2>
+        <p>{{ responseMessage }}</p>
         <p class="small-text">Tidak menerima email? Periksa folder spam atau <button @click="resetForm" class="text-button">coba lagi</button>.</p>
         <router-link to="/login" class="btn-auth mt-4">Kembali ke Login</router-link>
       </div>
       
       <form v-else @submit.prevent="handleResetRequest" class="auth-form">
+        <p v-if="requestError" role="alert" class="alert alert-danger">{{ requestError }}</p>
         <div class="form-group" :class="{ 'has-error': emailError }">
           <label for="email">Email</label>
           <div class="input-wrapper">
@@ -44,6 +45,7 @@
         </button>
       </form>
       
+      <p v-if="localMailbox" class="alert alert-info mt-3">Mode lokal: email reset masuk ke <a :href="localMailbox" target="_blank" rel="noopener noreferrer">kotak email Mailpit</a>.</p>
       <div class="auth-footer">
         <p>Ingat password Anda? <router-link to="/login">Masuk</router-link></p>
         <p>Belum punya akun? <router-link to="/register">Daftar</router-link></p>
@@ -54,9 +56,11 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import axios from 'axios';
 
-const router = useRouter();
+const localMailbox = import.meta.env.DEV ? import.meta.env.VITE_LOCAL_MAILBOX_URL : '';
+const responseMessage = ref('');
+const requestError = ref('');
 const email = ref('');
 const emailError = ref('');
 const isLoading = ref(false);
@@ -80,20 +84,19 @@ const validateEmail = () => {
 const handleResetRequest = async () => {
   if (!validateEmail()) return;
   
+  if (isLoading.value) return;
+  requestError.value = '';
   isLoading.value = true;
   resetStatus.value = 'loading';
   
   try {
-    // Here you would typically call your password reset API
-    // For demo purposes, we'll simulate an API call with a timeout
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    console.log('Password reset requested for:', email.value);
+    const response = await axios.post('http://localhost:3000/api/clients/forgot-password', { email: email.value });
+    responseMessage.value = response.data.message;
     resetStatus.value = 'success';
   } catch (error) {
     console.error('Error requesting password reset:', error);
     resetStatus.value = 'error';
-    alert('Terjadi kesalahan. Silakan coba lagi.');
+    requestError.value = error.response?.data?.message || 'Tidak dapat terhubung ke server. Silakan coba lagi.';
   } finally {
     isLoading.value = false;
   }

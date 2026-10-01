@@ -47,6 +47,8 @@ import Profile from "@pages/profile.vue";
 import Collaboration from "@pages/collaboration.vue";
 
 const routes = [
+  { path: '/reset-password', component: () => import('@pages/auth/resetPassword.vue') },
+  { path: '/forgot-password', redirect: '/forgotPass' },
   {
     path: "/",
     name: "home",
