@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
+import { getToken, getUser, dashboardPath, logout } from '../utils/auth';
+
 import Home from "@pages/home.vue";
 import About from "@pages/about.vue";
 import Programs from "@pages/programs.vue";
@@ -195,6 +197,11 @@ const routes = [
     component: CollaborationRequests,
   },
 
+  { path: '/author/dashboard', name: 'authorDashboard', component: () => import('@pages/author/dashboard.vue') },
+  { path: '/dashboard', redirect: () => dashboardPath() },
+  { path: '/admin', redirect: '/admin/dashboard' },
+  { path: '/editor', redirect: '/editor/dashboard' },
+  { path: '/author', redirect: '/author/dashboard' },
   // Author Routes
   {
     path: "/author/journals",
@@ -242,6 +249,25 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+router.beforeEach((to) => {
+  let user = getUser();
+  const token = getToken();
+  let valid = !!(token && user);
+  if (valid) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      valid = typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
+    } catch { valid = false; }
+  }
+  if (!valid && (token || user)) { logout(); user = null; }
+  const protectedRoute = /^\/(admin|editor|author)(\/|$)/.test(to.path) || ['/profile', '/collaborations'].includes(to.path);
+  if (protectedRoute && !valid) return { path: '/login', query: { redirect: to.fullPath } };
+  if (valid && ['/login', '/register'].includes(to.path)) return dashboardPath(user.role);
+  if (to.path.startsWith('/admin/') && user?.role !== 'admin') return dashboardPath(user?.role);
+  if (to.path.startsWith('/editor/') && user?.role !== 'editor') return dashboardPath(user?.role);
+  if (to.path === '/author/dashboard' && user?.role !== 'author') return dashboardPath(user?.role);
 });
 
 export default router;

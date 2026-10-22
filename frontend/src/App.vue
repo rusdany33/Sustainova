@@ -10,8 +10,8 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import newNavbar from "./components/newNavbar.vue";
-import Header from "./components/admin/Header.vue";
-import Sidebar from "./components/admin/Sidebar.vue";
+import Header from "./components/admin/header.vue";
+import Sidebar from "./components/admin/sidebar.vue";
 import Footer from "./components/Footer.vue";
 import Navbar from "./components/Navbar.vue";
 

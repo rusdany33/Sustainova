@@ -3,7 +3,7 @@
     <div class="container-fluid py-4">
       <div class="card shadow-sm">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
             <div>
               <h1 class="mb-1 fw-bold">Daftar Berita</h1>
               <p class="text-muted mb-0">Kelola semua berita dan artikel</p>
@@ -16,7 +16,11 @@
             </router-link>
           </div>
 
-          <div class="table-responsive">
+          <SearchToolbar v-model="search" id="search-berita" label="Berita" placeholder="Cari judul, ringkasan, atau kategori berita..." :count="filteredItems.length" :total="beritaItems.length" />
+          <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
+          <div v-if="loading" class="text-center py-5" role="status"><span class="spinner-border text-success"></span><p class="mt-3">Memuat berita...</p></div>
+          <div v-else-if="loadError" class="alert alert-danger" role="alert">{{ loadError }} <button class="btn btn-sm btn-outline-danger ms-2" @click="fetchBeritaData">Coba lagi</button></div>
+          <div v-else class="table-responsive">
             <table class="table table-hover align-middle">
               <thead class="table-header">
                 <tr>
@@ -28,7 +32,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(item, index) in beritaItems" :key="index" class="table-row">
+                <tr v-for="(item, index) in filteredItems" :key="item.ID_news" class="table-row">
                   <!-- Artikel Info -->
                   <td class="article-info">
                     <div v-if="editingId === item.ID_news" class="edit-mode">
@@ -110,7 +114,7 @@
                       <button
                         v-if="editingId !== item.ID_news"
                         class="btn btn-edit btn-sm d-flex align-items-center gap-1"
-                        @click="editingId = item.ID_news"
+                        @click="startEdit(item)"
                         title="Edit Berita"
                       >
                         <i class="bi bi-pencil"></i>
@@ -125,6 +129,7 @@
                         <i class="bi bi-check-lg"></i>
                         <span class="d-none d-md-inline">Simpan</span>
                       </button>
+                      <button v-if="editingId === item.ID_news" type="button" class="btn btn-sm btn-outline-secondary" @click="cancelEdit">Batal</button>
                       <button
                         class="btn btn-hapus btn-sm d-flex align-items-center gap-1"
                         @click="deleteHandler(item.ID_news)"
@@ -137,12 +142,13 @@
                     </div>
                   </td>
                 </tr>
-                <tr v-if="beritaItems.length === 0">
+                <tr v-if="filteredItems.length === 0">
                   <td colspan="5" class="text-center py-5">
                     <div class="empty-state">
+                      <button v-if="query" class="btn btn-outline-success mb-3" @click="search = ''">Hapus pencarian</button>
                       <i class="bi bi-newspaper text-muted" style="font-size: 3rem;"></i>
-                      <h5 class="text-muted mt-3">Tidak ada data berita</h5>
-                      <p class="text-muted">Mulai dengan menambahkan berita baru</p>
+                      <h5 class="text-muted mt-3">{{ query ? 'Tidak ada hasil pencarian' : 'Belum ada data berita' }}</h5>
+                      <p class="text-muted">{{ query ? 'Coba kata kunci lain atau hapus pencarian.' : 'Mulai dengan menambahkan berita baru.' }}</p>
                     </div>
                   </td>
                 </tr>
@@ -156,12 +162,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import SearchToolbar from '../../../components/admin/SearchToolbar.vue';
 import { formatDate } from '../../../utils/format.js';
 
 const beritaItems = ref([]);
+const search = ref('');
+const loading = ref(true);
+const loadError = ref('');
+const actionError = ref('');
+const query = computed(() => search.value.trim().toLocaleLowerCase('id-ID'));
+const filteredItems = computed(() => beritaItems.value.filter(item => item.ID_news === editingId.value || !query.value || [item.title, item.ringkasan, item.kategori || 'Umum', item.date_published].some(value => String(value ?? '').toLocaleLowerCase('id-ID').includes(query.value))));
 const editingId = ref(null);
+let editBackup = null;
+function cancelEdit() {
+  const item = beritaItems.value.find(row => row.ID_news === editingId.value);
+  if (item && editBackup) { Object.keys(item).forEach(key => delete item[key]); Object.assign(item, editBackup); }
+  editingId.value = null; editBackup = null;
+}
+function startEdit(item) {
+  cancelEdit();
+  editBackup = { ...item }; editingId.value = item.ID_news;
+}
 
 const getImages = (imageName) => {
   return `http://localhost:3000/api/images/berita/${encodeURIComponent(imageName)}`;
@@ -177,6 +200,8 @@ const handleImageError = (event) => {
 };
 
 const fetchBeritaData = async () => {
+  loading.value = true;
+  loadError.value = '';
   try {
     const response = await axios.get('http://localhost:3000/api/admin/berita');
     beritaItems.value = response.data.map((item) => ({
@@ -186,8 +211,8 @@ const fetchBeritaData = async () => {
     console.log(response.data);
   } catch (error) {
     console.error('Error fetching berita data:', error);
-    beritaItems.value = [];
-  }
+    loadError.value = 'Data berita belum dapat dimuat. Silakan coba lagi.';
+  } finally { loading.value = false; }
 };
 
 const onFileChange = (event, item, field) => {
@@ -198,6 +223,7 @@ const onFileChange = (event, item, field) => {
 }
 
 const saveEdit = async (item) => {
+  actionError.value = '';
   try {
     const formData = new FormData();
     formData.append('title', item.title);
@@ -219,17 +245,18 @@ const saveEdit = async (item) => {
     editingId.value = null; 
     fetchBeritaData();
   }catch (error) {
-    console.error('Error saving berita:', error);
+    actionError.value = error.response?.data?.message || 'Perubahan belum tersimpan. Silakan coba lagi.';
   }
 };
 
 const deleteHandler = async (id) => {
   if (!confirm('Yakin ingin menghapus berita ini?')) return;
+  actionError.value = '';
   try {
     await axios.delete(`http://localhost:3000/api/admin/delete/berita/${id}`);
     fetchBeritaData();
   } catch (error) {
-    console.error('Error deleting berita:', error);
+    actionError.value = error.response?.data?.message || 'Perubahan belum tersimpan. Silakan coba lagi.';
   }
 };
 

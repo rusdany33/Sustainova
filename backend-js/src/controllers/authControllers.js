@@ -6,13 +6,19 @@ const queryAsync = require("../utils/db");
 // USer Login Function
 exports.loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
     // Validasi input
-    if (!email || !password) {
+    const errors = {};
+    if (!email) errors.email = 'Email wajib diisi';
+    else if (email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Format email tidak valid';
+    if (!password) errors.password = 'Password wajib diisi';
+    if (Object.keys(errors).length) {
       return res.status(400).json({
         success: false,
-        message: "Email dan password harus diisi",
+        message: Object.values(errors)[0],
+        errors,
       });
     }
 
@@ -22,6 +28,8 @@ exports.loginUser = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Email tidak terdaftar",
+        field: 'email',
+        errors: { email: 'Email tidak terdaftar' },
       });
     }
 
@@ -33,6 +41,8 @@ exports.loginUser = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Password salah",
+        field: 'password',
+        errors: { password: 'Password salah' },
       });
     }
 

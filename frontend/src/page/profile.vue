@@ -245,7 +245,7 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
-import { getToken, getUser, logout } from '@/utils/auth';
+import { getToken, getUser, updateUser, logout } from '@/utils/auth';
 
 const router = useRouter();
 const token = getToken();
@@ -290,8 +290,7 @@ const updateProfile = async () => {
     if (response.data.success) {
       alert('Profile berhasil diperbarui!');
       user.value = { ...user.value, ...editForm.value };
-      const storage = localStorage.getItem('user') ? localStorage : sessionStorage;
-      storage.setItem('user', JSON.stringify(user.value));
+      updateUser(user.value);
       showEditForm.value = false;
     }
   } catch (error) {

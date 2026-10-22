@@ -4,6 +4,8 @@
     <button 
       class="sidebar-toggle" 
       @click="toggleSidebar"
+      :aria-label="isOpen ? 'Tutup navigasi' : 'Buka navigasi'"
+      :aria-expanded="isOpen"
       :class="{ 'sidebar-open': isOpen }"
     >
       <i class="bi bi-list" v-if="!isOpen"></i>
@@ -110,9 +112,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 
-const isOpen = ref(true)
+const isOpen = ref(window.innerWidth > 768)
+watch(isOpen, value => document.documentElement.style.setProperty('--admin-sidebar-width', value ? '280px' : '80px'), { immediate: true })
 
 const toggleSidebar = () => {
   isOpen.value = !isOpen.value
@@ -148,6 +151,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  document.documentElement.style.removeProperty('--admin-sidebar-width')
   window.removeEventListener('resize', handleResize)
 })
 
@@ -158,6 +162,9 @@ defineExpose({
 </script>
 
 <style scoped>
+@media (min-width: 769px) { .sidebar-overlay { display: none; } }
+.sidebar-toggle { top: 14px !important; width: 44px !important; height: 44px !important; }
+
 /* Sidebar Toggle Button */
 .sidebar-toggle {
   position: fixed;
@@ -186,7 +193,7 @@ defineExpose({
 }
 
 .sidebar-toggle.sidebar-open {
-  left: 260px;
+  left: 252px;
   background: linear-gradient(135deg, #f44336 0%, #e57373 100%);
   box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
 }
@@ -262,10 +269,12 @@ defineExpose({
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
+    visibility: hidden;
   }
   
   .sidebar.open {
     transform: translateX(0);
+    visibility: visible;
   }
   
   .sidebar.collapsed {

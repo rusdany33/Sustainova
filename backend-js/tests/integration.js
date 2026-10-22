@@ -30,6 +30,17 @@ async function main() {
   try {
     for (const route of ['health', 'clients/home', 'clients/program', 'clients/berita', 'clients/news', 'clients/jurnal', 'clients/riset', 'clients/publikasi', 'clients/team', 'clients/partners']) await api(route);
     const accounts = {};
+    const missing = await api('clients/login', 'POST', {}, undefined, 400);
+    assert.equal(missing.errors.email, 'Email wajib diisi');
+    assert.equal(missing.errors.password, 'Password wajib diisi');
+    const badEmail = await api('clients/login', 'POST', { email: 'invalid', password: 'test' }, undefined, 400);
+    assert.ok(badEmail.errors.email);
+    assert.equal(badEmail.errors.password, undefined);
+    const unknown = await api('clients/login', 'POST', { email: `${marker}@example.test`, password: 'test' }, undefined, 401);
+    assert.equal(unknown.field, 'email');
+    const wrongPassword = await api('clients/login', 'POST', { email: 'admin@test.com', password: 'incorrect-password' }, undefined, 401);
+    assert.equal(wrongPassword.field, 'password');
+    assert.equal(wrongPassword.errors.email, undefined);
     for (const role of ['admin', 'editor', 'author']) {
       accounts[role] = await api('clients/login', 'POST', { email: `${role}@test.com`, password: 'password123' });
       assert.ok(accounts[role].user.id);

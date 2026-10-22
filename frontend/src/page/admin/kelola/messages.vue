@@ -3,7 +3,7 @@
     <div class="container-fluid py-4">
       <div class="card shadow-sm">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
             <div>
               <h1 class="mb-1 fw-bold">Pesan Kontak</h1>
               <p class="text-muted mb-0">Kelola semua pesan dari pengunjung</p>
@@ -14,7 +14,11 @@
             </div>
           </div>
 
-          <div class="table-responsive">
+          <SearchToolbar v-model="search" id="search-pesan" label="Pesan" placeholder="Cari pengirim, email, subjek, atau isi pesan..." :count="filteredItems.length" :total="messages.length" />
+          <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
+          <div v-if="loading" class="text-center py-5" role="status"><span class="spinner-border text-success"></span><p class="mt-3">Memuat pesan...</p></div>
+          <div v-else-if="loadError" class="alert alert-danger" role="alert">{{ loadError }} <button class="btn btn-sm btn-outline-danger ms-2" @click="loadMessages">Coba lagi</button></div>
+          <div v-else class="table-responsive">
             <table class="table table-hover align-middle">
               <thead class="table-header">
                 <tr>
@@ -27,12 +31,13 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="messages.length === 0">
+                <tr v-if="filteredItems.length === 0">
                   <td colspan="6" class="text-center text-muted py-4">
-                    Tidak ada pesan
+                    {{ query ? 'Tidak ada pesan yang sesuai dengan pencarian.' : 'Belum ada pesan dari pengunjung.' }}
+                    <button v-if="query" class="btn btn-link d-block mx-auto" @click="search = ''">Hapus pencarian</button>
                   </td>
                 </tr>
-                <tr v-for="(message, index) in messages" :key="index" :class="message.status === 'new' ? 'table-active' : ''">
+                <tr v-for="(message, index) in filteredItems" :key="message.id" :class="message.status === 'new' ? 'table-active' : ''">
                   <td>
                     <div>
                       <h6 class="mb-1 fw-semibold">{{ message.name }}</h6>
@@ -148,9 +153,16 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import SearchToolbar from '../../../components/admin/SearchToolbar.vue';
 import { getToken } from '@/utils/auth';
 
 const messages = ref([]);
+const search = ref('');
+const loading = ref(true);
+const loadError = ref('');
+const actionError = ref('');
+const query = computed(() => search.value.trim().toLocaleLowerCase('id-ID'));
+const filteredItems = computed(() => messages.value.filter(item => !query.value || [item.name, item.email, item.subject, item.topic, item.message, item.status, formatStatus(item.status)].some(value => String(value ?? '').toLocaleLowerCase('id-ID').includes(query.value))));
 const selectedMessage = ref(null);
 const token = getToken();
 const headers = { Authorization: `Bearer ${token}` };
@@ -182,13 +194,15 @@ const formatStatus = (status) => {
 };
 
 const loadMessages = async () => {
+  loading.value = true;
+  loadError.value = '';
   try {
     const response = await axios.get('http://localhost:3000/api/admin/messages', { headers });
     messages.value = response.data.data || [];
   } catch (error) {
     console.error('Error loading messages:', error);
-    alert('Gagal memuat pesan: ' + (error.response?.data?.message || error.message));
-  }
+    loadError.value = 'Pesan belum dapat dimuat. Silakan coba lagi.';
+  } finally { loading.value = false; }
 };
 
 const viewMessage = async (id) => {
