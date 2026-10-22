@@ -410,3 +410,10 @@ textarea {
 .small {
   font-size: 0.875rem;
 }
+
+/* Shared admin shell keeps content aligned with the collapsible sidebar. */
+.admin-content { margin-left: var(--admin-sidebar-width, 280px) !important; margin-top: 78px !important; padding: 24px !important; min-width: 0; transition: margin-left .2s; }
+.admin-content .table-responsive { width: 100%; }
+.admin-content .btn-tambah { background: #34764d; box-shadow: none; }
+.admin-content .btn-tambah:hover { background: #285f3d; }
+@media (max-width:768px) { .admin-content { margin-left: 0 !important; padding: 10px !important; }.admin-content h1 { font-size: 26px; }.admin-content .container-fluid { padding-left: 0; padding-right: 0; } }

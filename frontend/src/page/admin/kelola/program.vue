@@ -3,7 +3,7 @@
     <div class="container-fluid py-4">
       <div class="card shadow-sm">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
             <div>
               <h1 class="mb-1 fw-bold">Daftar Program</h1>
               <p class="text-muted mb-0">Kelola semua program dan inovasi</p>
@@ -16,7 +16,11 @@
             </router-link>
           </div>
 
-          <div class="table-responsive">
+          <SearchToolbar v-model="search" id="search-program" label="Program" placeholder="Cari nama, deskripsi, atau status program..." :count="filteredItems.length" :total="programItems.length" />
+          <div v-if="actionError" class="alert alert-danger" role="alert">{{ actionError }}</div>
+          <div v-if="loading" class="text-center py-5" role="status"><span class="spinner-border text-success"></span><p class="mt-3">Memuat program...</p></div>
+          <div v-else-if="loadError" class="alert alert-danger" role="alert">{{ loadError }} <button class="btn btn-sm btn-outline-danger ms-2" @click="fetchProgramData">Coba lagi</button></div>
+          <div v-else class="table-responsive">
             <table class="table table-hover align-middle">
               <thead class="table-header">
                 <tr>
@@ -29,7 +33,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(item, index) in programItems" :key="index" class="table-row">
+                <tr v-for="(item, index) in filteredItems" :key="item.ID_program" class="table-row">
                   <!-- Program Info -->
                   <td class="program-info">
                     <div v-if="editingId === item.ID_program" class="edit-mode">
@@ -139,7 +143,7 @@
                       <button
                         v-if="editingId !== item.ID_program"
                         class="btn btn-edit btn-sm d-flex align-items-center gap-1"
-                        @click="editingId = item.ID_program"
+                        @click="startEdit(item)"
                         title="Edit Program"
                       >
                         <i class="bi bi-pencil"></i>
@@ -154,6 +158,7 @@
                         <i class="bi bi-check-lg"></i>
                         <span class="d-none d-md-inline">Simpan</span>
                       </button>
+                      <button v-if="editingId === item.ID_program" type="button" class="btn btn-sm btn-outline-secondary" @click="cancelEdit">Batal</button>
                       <button
                         class="btn btn-hapus btn-sm d-flex align-items-center gap-1"
                         @click="deleteProgram(item.ID_program)"
@@ -166,12 +171,13 @@
                     </div>
                   </td>
                 </tr>
-                <tr v-if="programItems.length === 0">
+                <tr v-if="filteredItems.length === 0">
                   <td colspan="6" class="text-center py-5">
                     <div class="empty-state">
+                      <button v-if="query" class="btn btn-outline-success mb-3" @click="search = ''">Hapus pencarian</button>
                       <i class="bi bi-folder-x text-muted" style="font-size: 3rem;"></i>
-                      <h5 class="text-muted mt-3">Tidak ada data program</h5>
-                      <p class="text-muted">Mulai dengan menambahkan program baru</p>
+                      <h5 class="text-muted mt-3">{{ query ? 'Tidak ada hasil pencarian' : 'Belum ada data program' }}</h5>
+                      <p class="text-muted">{{ query ? 'Coba kata kunci lain atau hapus pencarian.' : 'Mulai dengan menambahkan program baru.' }}</p>
                     </div>
                   </td>
                 </tr>
@@ -185,12 +191,29 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import axios from 'axios';
+import SearchToolbar from '../../../components/admin/SearchToolbar.vue';
 import { formatDate } from '../../../utils/format.js';
 
 const programItems = ref([]);
+const search = ref('');
+const loading = ref(true);
+const loadError = ref('');
+const actionError = ref('');
+const query = computed(() => search.value.trim().toLocaleLowerCase('id-ID'));
+const filteredItems = computed(() => programItems.value.filter(item => item.ID_program === editingId.value || !query.value || [item.name, item.description, item.status, item.peserta, item.start_date, item.end_date].some(value => String(value ?? '').toLocaleLowerCase('id-ID').includes(query.value))));
 const editingId = ref(null);
+let editBackup = null;
+function cancelEdit() {
+  const item = programItems.value.find(row => row.ID_program === editingId.value);
+  if (item && editBackup) { Object.keys(item).forEach(key => delete item[key]); Object.assign(item, editBackup); }
+  editingId.value = null; editBackup = null;
+}
+function startEdit(item) {
+  cancelEdit();
+  editBackup = { ...item }; editingId.value = item.ID_program;
+}
 
 const getImages = (imageName) => {
   return `http://localhost:3000/api/images/programs/${encodeURIComponent(imageName)}`;
@@ -237,6 +260,8 @@ const handleImageError = (event) => {
 };
 
 const fetchProgramData = async () => {
+  loading.value = true;
+  loadError.value = '';
   try {
     const response = await axios.get('http://localhost:3000/api/admin/programs');
     programItems.value = response.data.map((item) => ({
@@ -246,11 +271,12 @@ const fetchProgramData = async () => {
     }));
   } catch (error) {
     console.error('Error fetching program data:', error);
-    programItems.value = [];
-  }
+    loadError.value = 'Data program belum dapat dimuat. Silakan coba lagi.';
+  } finally { loading.value = false; }
 };
 
 const saveEdit = async (item) => {
+  actionError.value = '';
   try {
     const formData = new FormData();
     formData.append('ID_program', item.ID_program);
@@ -275,7 +301,7 @@ const saveEdit = async (item) => {
     editingId.value = null;
     fetchProgramData();
   } catch (error) {
-    console.error('Error updating program:', error);
+    actionError.value = error.response?.data?.message || 'Perubahan belum tersimpan. Silakan coba lagi.';
   }
 };
 
@@ -288,11 +314,12 @@ const onFileChange = (event, item, field) => {
 
 const deleteProgram = async (id) => {
   if (!confirm('Yakin ingin menghapus program ini?')) return;
+  actionError.value = '';
   try {
     await axios.delete(`http://localhost:3000/api/admin/delete/programs/${id}`);
     fetchProgramData();
   } catch (error) {
-    console.error('Error deleting program:', error);
+    actionError.value = error.response?.data?.message || 'Perubahan belum tersimpan. Silakan coba lagi.';
   }
 };
 

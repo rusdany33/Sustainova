@@ -13,6 +13,7 @@ dist-ssr
 *.local
 .env
 .env.*
+./backend-js/.env
 !.env.example
 desktop.ini
 backend-js/uploads/

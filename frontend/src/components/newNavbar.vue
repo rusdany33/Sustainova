@@ -1,9 +1,9 @@
 <template>
   <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
     <div class="container">
-      <a class="navbar-brand" href="#">
+      <router-link class="navbar-brand" to="/">
         <img src="@logo" alt="Logo" height="50">
-      </a>
+      </router-link>
       
       <button 
         class="navbar-toggler" 
@@ -54,14 +54,7 @@
           </li>
           
           <li class="nav-item ms-2 position-relative">
-            <PopupOverlay 
-              :is-logged-in="isLoggedIn" 
-              :user="user"
-              @login="handleLogin"
-              @register="handleRegister"
-              @logout="handleLogout"
-              @dashboard="handleDashboard"
-            />
+            <AccountMenu />
           </li>
         </ul>
       </div>
@@ -72,7 +65,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import PopupOverlay from './PopupOverlay.vue';
+import AccountMenu from './AccountMenu.vue';
 import { getToken, getUser, logout } from '../utils/auth';
 import axios from 'axios';
 

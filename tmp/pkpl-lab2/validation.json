@@ -1,0 +1,17 @@
+{
+  "requirements": 27,
+  "features": 8,
+  "conditions": 54,
+  "coverage_items": 27,
+  "ttm_rows": 54,
+  "orphan_ids": [],
+  "sources": [
+    "D:\\PKPL\\PKPL_Modul_1_Test_Plan_Admin_Rusdany_202210370311406.docx",
+    "D:\\PKPL\\Test Design Specification & TTM Template.docx"
+  ],
+  "output_files": [
+    "C:\\laragon\\www\\SUSTAINOVATA-main\\output\\doc\\PKPL_Modul_1_Test_Plan_Admin_Rusdany_202210370311406_Revisi_v1_2.docx",
+    "C:\\laragon\\www\\SUSTAINOVATA-main\\output\\doc\\PKPL_Modul_2_LAB_TDS_TTM_Admin_Rusdany_202210370311406.docx",
+    "C:\\laragon\\www\\SUSTAINOVATA-main\\output\\doc\\SRD_Sustainova_Admin_Modul_2.md"
+  ]
+}

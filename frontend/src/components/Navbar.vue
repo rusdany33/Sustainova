@@ -80,7 +80,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 
-import PopupOverlay from './PopupOverlay.vue';
+import PopupOverlay from './popupoverlay.vue';
 import { getToken, getUser, logout } from '../utils/auth';
 
 const router = useRouter();

@@ -3,15 +3,18 @@
     <div class="auth-container">
       <h1 class="auth-title">MASUK</h1>
 
-      <form @submit.prevent="handleLogin" class="auth-form">
+      <form @submit.prevent="handleLogin" class="auth-form" novalidate>
+        <div v-if="errorMessage" class="alert alert-danger mb-0" role="alert">{{ errorMessage }}</div>
         <div class="form-group">
           <label for="email">Email</label>
-          <input type="email" id="email" v-model="email" required class="form-control">
+          <input type="email" id="email" v-model="email" autocomplete="email" class="form-control" :class="{ 'is-invalid': errors.email }" :aria-invalid="!!errors.email" aria-describedby="email-error" @input="errors.email = ''; errorMessage = ''">
+          <p v-if="errors.email" id="email-error" class="field-error" role="alert">{{ errors.email }}</p>
         </div>
 
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" v-model="password" required class="form-control">
+          <input type="password" id="password" v-model="password" autocomplete="current-password" class="form-control" :class="{ 'is-invalid': errors.password }" :aria-invalid="!!errors.password" aria-describedby="password-error" @input="errors.password = ''; errorMessage = ''">
+          <p v-if="errors.password" id="password-error" class="field-error" role="alert">{{ errors.password }}</p>
         </div>
 
         <div class="form-options">
@@ -22,7 +25,7 @@
           <router-link to="/forgotPass" class="forgot-password">Lupa password?</router-link>
         </div>
 
-        <button type="submit" class="btn-auth">Masuk</button>
+        <button type="submit" class="btn-auth" :disabled="loading"><span v-if="loading" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>{{ loading ? 'Memproses…' : 'Masuk' }}</button>
       </form>
 
       <div class="auth-footer">
@@ -33,78 +36,50 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, reactive, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
-import { getUser, logout, getToken, getRemember } from '../../utils/auth'; // sesuaikan dengan path utils auth
-
+import { getRemember, setSession, dashboardPath } from '../../utils/auth';
 const router = useRouter();
-const email = ref('');
+const saved = getRemember();
+const email = ref(saved?.email || '');
 const password = ref('');
-const rememberMe = ref(false);
-
-
-onMounted(() => {
-  const user = getUser();
-  const token = getToken();
-  const saved = getRemember();
-
-  if (saved) {
-    const { email: savedEmail, password: savedPassword, statusSaved = saved } = saved;
-    console.log('Saved user data:', savedEmail, savedPassword, statusSaved);
-    email.value = savedEmail;
-    password.value = savedPassword;
-    rememberMe.value = true;
-  }
-
-  if (user && token) {
-    console.log('User sudah login:', user);
-    router.push('/');
-  } else if (user && !token) {
-    console.log('User sudah login tetapi token tidak ada');
-    alert('Token tidak ditemukan, silakan login kembali.');
-    logout();
-  } else {
-    console.log('User belum login');
-  }
-});
-
-const handleLogin = async () => {
+const rememberMe = ref(!!saved);
+const loading = ref(false);
+const errors = reactive({ email: '', password: '' });
+const errorMessage = ref('');
+async function focusError() {
+  await nextTick();
+  document.getElementById(errors.email ? 'email' : 'password')?.focus();
+}
+async function handleLogin() {
+  if (loading.value) return;
+  errors.email = ''; errors.password = ''; errorMessage.value = '';
+  email.value = email.value.trim();
+  if (!email.value) errors.email = 'Email wajib diisi.';
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) errors.email = 'Masukkan alamat email yang valid.';
+  if (!password.value) errors.password = 'Password wajib diisi.';
+  if (errors.email || errors.password) { focusError(); return; }
+  loading.value = true;
   try {
-    const response = await axios.post('http://localhost:3000/api/clients/login', {
-      email: email.value,
-      password: password.value
-    });
-
-    const { token, user } = response.data;
-    // const storage = rememberMe.value ? localStorage : sessionStorage;
-    // storage.setItem('token', token);
-    // storage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-
-    if (rememberMe.value) {
-      localStorage.setItem('savedUser', JSON.stringify({
-        email: email.value,
-        password: password.value,
-        saved: true
-      }));
-    } else {
-      localStorage.removeItem('savedUser');
-    }
-
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    router.push('/');
-
+    const { data } = await axios.post('http://localhost:3000/api/clients/login', { email: email.value, password: password.value });
+    setSession(data.token, data.user, rememberMe.value);
+    await router.replace(dashboardPath(data.user.role));
   } catch (error) {
-    const msg = error.response?.data?.message || error.message;
-    alert('Login gagal: ' + msg);
-  }
-};
+    const data = error.response?.data;
+    for (const field of ['email', 'password']) if (data?.errors?.[field]) errors[field] = data.errors[field];
+    if (['email', 'password'].includes(data?.field) && !errors[data.field]) errors[data.field] = data.message;
+    if (!errors.email && !errors.password) errorMessage.value = data?.message || 'Tidak dapat terhubung ke server. Silakan coba lagi.';
+    else focusError();
+  } finally { loading.value = false; }
+}
 </script>
 
 
 <style scoped>
+.field-error { color: #b42318; font-size: .875rem; margin: 0; }
+.form-control.is-invalid { border-color: #b42318; }
+.btn-auth:disabled { opacity: .65; cursor: wait; }
 .auth-page {
   min-height: 100vh;
   display: flex;
@@ -192,8 +167,8 @@ const handleLogin = async () => {
 }
 
 .btn-auth {
-  background-color: #fff;
-  color: #000;
+  background-color: #3b711c;
+  color: #fff;
   border: none;
   border-radius: 4px;
   padding: 12px;
@@ -205,7 +180,7 @@ const handleLogin = async () => {
 }
 
 .btn-auth:hover {
-  background-color: #f0f0f0;
+  background-color: #2d5915;
 }
 
 .auth-footer {
