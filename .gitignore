@@ -39,3 +39,6 @@ ZENCODER.md
 # Ignore saved file
 backend-js/src/fileSaved/**
 
+
+# Jest coverage output
+backend-js/coverage/
